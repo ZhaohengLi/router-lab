@@ -11,6 +11,27 @@
  * @return 校验和无误则返回 true ，有误则返回 false
  */
 bool forward(uint8_t *packet, size_t len) {
-  // TODO:
-  return false;
+  uint8_t IHL = packet[0] & 0x0F;
+  int sum = 0;
+
+  for(int i=0; i<(IHL*4); i+=2){
+      sum += (packet[i]<<8);
+      sum += packet[i+1];
+  }
+  while(sum > 0xFFFF){ sum = (sum>>16) + (sum&0xFFFF); }
+  if(sum != 0xFFFF) return false;
+
+  packet[8] -= 1;
+  sum = 0;
+  for(int i=0; i<(IHL*4); i+=2){
+      if(i==10) continue;
+      sum += (packet[i]<<8);
+      sum += packet[i+1];
+  }
+  while(sum > 0xFFFF){ sum = (sum>>16) + (sum&0xFFFF); }
+  sum = (~sum)&0xFFFF;
+  packet[10] = (sum&0xFF00)>>8;
+  packet[11] = sum&0x00FF;
+
+  return true;
 }

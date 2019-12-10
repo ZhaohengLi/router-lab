@@ -1,7 +1,8 @@
 #include "router.h"
 #include <stdint.h>
 #include <stdlib.h>
-
+#include <vector>
+#include <arpa/inet.h>
 /*
   RoutingTable Entry 的定义如下：
   typedef struct {
@@ -17,17 +18,62 @@
   当 nexthop 为零时这是一条直连路由。
   你可以在全局变量中把路由表以一定的数据结构格式保存下来。
 */
+#define N 9
+#define M 3277
+
+class Unit{
+public:
+  RoutingTableEntry routingTableEntry;
+  uint32_t next;
+  bool isDeleted;
+};
+
+std::vector<Unit> vec(1);
+uint32_t arr[N][M];
 
 /**
  * @brief 插入/删除一条路由表表项
  * @param insert 如果要插入则为 true ，要删除则为 false
  * @param entry 要插入/删除的表项
- * 
+ *
  * 插入时如果已经存在一条 addr 和 len 都相同的表项，则替换掉原有的。
  * 删除时按照 addr 和 len 匹配。
  */
 void update(bool insert, RoutingTableEntry entry) {
-  // TODO:
+  if(!insert){
+      std::vector<Unit>::iterator iter ;
+      for(iter=vec.begin(); iter!=vec.end();){
+          uint32_t addr = ntohl(entry.addr)>>(32-entry.len);
+          bool checkAddr = (*iter).routingTableEntry.addr == addr;
+          bool checkLength = (*iter).routingTableEntry.len == entry.len;
+          if(checkAddr && checkLength){ iter = vec.erase(iter); (*iter).isDeleted = true; }
+          else { iter++; }
+      }
+  }else{
+    int n = (entry.len-1)>>2;
+    int m = (ntohl(entry.addr)>>(32-(((n)<<2)+1)))%M;
+    uint32_t addr = ntohl(entry.addr)>>(32-entry.len);
+
+    bool isFound = false;
+    int j=arr[n][m];
+    while(j){
+        if(vec[j].routingTableEntry.addr == addr && vec[j].routingTableEntry.len == entry.len){
+            RoutingTableEntry e = (RoutingTableEntry){addr,entry.len, entry.if_index,entry.nexthop};
+            vec[j] = (Unit){e,vec[j].next,false};
+            isFound = true;
+        }
+        j=vec[j].next;
+    }
+    if(isFound){
+        return;
+    } else {
+      RoutingTableEntry e = (RoutingTableEntry){addr,entry.len, entry.if_index,entry.nexthop};
+      Unit unit = (Unit) {e,arr[n][m],false};
+      arr[n][m] = vec.size();
+      vec.push_back(unit);
+    }
+  }
+
 }
 
 /**
@@ -38,8 +84,31 @@ void update(bool insert, RoutingTableEntry entry) {
  * @return 查到则返回 true ，没查到则返回 false
  */
 bool query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index) {
-  // TODO:
   *nexthop = 0;
   *if_index = 0;
+  for(uint32_t i=32; i>=8; i-=4){
+    uint32_t mask=0, index=0, n=(i-1)>>2, m=(ntohl(addr)>>(35-i))%M;
+    if (arr[n][m]) {
+      for (uint32_t j=arr[n][m]; j; j=vec[j].next) {
+          bool check0=!vec[j].isDeleted && vec[j].routingTableEntry.addr==(ntohl(addr)>>(32-i)) && vec[j].routingTableEntry.len==i && mask<j;
+          bool check1=!vec[j].isDeleted && vec[j].routingTableEntry.addr==(ntohl(addr)>>(33-i)) && vec[j].routingTableEntry.len==i-1 && mask<i-1;
+          bool check2=!vec[j].isDeleted && vec[j].routingTableEntry.addr==(ntohl(addr)>>(34-i)) && vec[j].routingTableEntry.len==i-2 && mask<i-2;
+          bool check3=!vec[j].isDeleted && vec[j].routingTableEntry.addr==(ntohl(addr)>>(35-i)) && vec[j].routingTableEntry.len==i-3 && mask<i-3;
+          if(check0){
+                *nexthop = vec[j].routingTableEntry.nexthop;
+                *if_index = vec[j].routingTableEntry.if_index;
+                return true;
+          }
+          if(check1){ mask=j-1; index=j; }
+          if(check2){ mask=j-2; index=j; }
+          if(check3){ mask=j-3; index=j; }
+      }
+      if(mask){
+         *nexthop = vec[index].routingTableEntry.nexthop;
+         *if_index = vec[index].routingTableEntry.if_index;
+         return true;
+      }
+    }
+  }
   return false;
 }
