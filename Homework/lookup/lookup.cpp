@@ -58,7 +58,7 @@ void update(bool insert, RoutingTableEntry entry) {
     int j=arr[n][m];
     while(j){
         if(vec[j].routingTableEntry.addr == addr && vec[j].routingTableEntry.len == entry.len){
-            RoutingTableEntry e = (RoutingTableEntry){addr,entry.len, entry.if_index,entry.nexthop};
+            RoutingTableEntry e = (RoutingTableEntry){addr,entry.len, entry.if_index, entry.nexthop, entry.metric, entry.timestamp};
             vec[j] = (Unit){e,vec[j].next,false};
             isFound = true;
         }
@@ -67,7 +67,7 @@ void update(bool insert, RoutingTableEntry entry) {
     if(isFound){
         return;
     } else {
-      RoutingTableEntry e = (RoutingTableEntry){addr,entry.len, entry.if_index,entry.nexthop};
+      RoutingTableEntry e = (RoutingTableEntry){addr,entry.len, entry.if_index, entry.nexthop, entry.metric, entry.timestamp};
       Unit unit = (Unit) {e,arr[n][m],false};
       arr[n][m] = vec.size();
       vec.push_back(unit);
@@ -81,11 +81,15 @@ void update(bool insert, RoutingTableEntry entry) {
  * @param addr 需要查询的目标地址，大端序
  * @param nexthop 如果查询到目标，把表项的 nexthop 写入
  * @param if_index 如果查询到目标，把表项的 if_index 写入
+ * @param metric 如果查询到目标，把表项的 metric 写入
+ * @param timestamp 如果查询到目标，把表项的 timestamp 写入
  * @return 查到则返回 true ，没查到则返回 false
  */
-bool query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index) {
+bool query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index, uint32_t *metric, uint32_t *timestamp) {
   *nexthop = 0;
   *if_index = 0;
+  *metric = 0;
+  *timestamp = 0;
   for(uint32_t i=32; i>=8; i-=4){
     uint32_t mask=0, index=0, n=(i-1)>>2, m=(ntohl(addr)>>(35-i))%M;
     if (arr[n][m]) {
@@ -97,6 +101,8 @@ bool query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index) {
           if(check0){
                 *nexthop = vec[j].routingTableEntry.nexthop;
                 *if_index = vec[j].routingTableEntry.if_index;
+                *metric = vec[index].routingTableEntry.metric;
+                *timestamp = vec[index].routingTableEntry.timestamp;
                 return true;
           }
           if(check1){ mask=j-1; index=j; }
@@ -106,9 +112,27 @@ bool query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index) {
       if(mask){
          *nexthop = vec[index].routingTableEntry.nexthop;
          *if_index = vec[index].routingTableEntry.if_index;
+         *metric = vec[index].routingTableEntry.metric;
+         *timestamp = vec[index].routingTableEntry.timestamp;
          return true;
       }
     }
   }
   return false;
+}
+
+void fillResp(RipPacket *resp, int command) {
+  (*resp).command = command;
+  int size = 0;
+  std::vector<Unit>::iterator iter ;
+  for(iter=vec.begin(); iter!=vec.end(); iter++){
+    if((*iter).isDeleted == false) {
+      (*resp).entries[size].addr = (*iter).routingTableEntry.addr;
+      (*resp).entries[size].mask = 0;
+      (*resp).entries[size].nexthop = 0;
+      (*resp).entries[size].metric = (*iter).routingTableEntry.metric;
+      size += 1;
+    }
+  }
+  (*resp).numEntries = size;
 }
