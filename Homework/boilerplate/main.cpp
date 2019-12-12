@@ -234,6 +234,7 @@ int main(int argc, char *argv[]) {
           // send it back
           HAL_SendIPPacket(if_index, output, rip_len + 20 + 8, src_mac);
         } else {
+
           // 3a.2 response, ref. RFC2453 3.9.2
           // assemble invalid RIP packet response, maybe not using it now
           // RipPacket invalid;
@@ -258,6 +259,7 @@ int main(int argc, char *argv[]) {
               .nexthop = entry.nexthop,
               .metric = entry.metric+1
             };
+            printf("mask: %08x, len: %d\n",entry.mask, routingTableEntry.len);
             if(rip.entries[i].metric + 1 >= 16){
               // invalid metric, deleting it in routing table and sending it back later
               // maybe not using it now
