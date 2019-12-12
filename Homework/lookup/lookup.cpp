@@ -1,4 +1,5 @@
 #include "router.h"
+#include "rip.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <vector>
