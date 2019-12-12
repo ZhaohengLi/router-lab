@@ -28,7 +28,7 @@ vector<RoutingTableEntry> routingTable;
  * @brief 插入/删除一条路由表表项
  * @param insert 如果要插入则为 true ，要删除则为 false
  * @param entry 要插入/删除的表项
- * 
+ *
  * 插入时如果已经存在一条 addr 和 len 都相同的表项，则替换掉原有的。
  * 删除时按照 addr 和 len 匹配。
  */
@@ -62,7 +62,7 @@ bool query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index) {
   *nexthop = 0;
   *if_index = 0;
   uint32_t lenBound = 0;
-  
+
   auto iter = routingTable.cbegin();
   // printf("trying to find addr: %08X\n", addr);
   while(iter != routingTable.cend()){
@@ -144,6 +144,6 @@ void printTable(){
       dest[i] = (entry.addr >> (i * 8)) & 0xff;
       nexthop[i] = (entry.nexthop >> (i * 8)) & 0xff;
     }
-    printf("%u.%u.%u.%u via %u.%u.%u.%u wigh length %u through interface %u\n", dest[0], dest[1], dest[2], dest[3], nexthop[0], nexthop[1],nexthop[2],nexthop[3], entry.len, entry.if_index);
+    printf("%u.%u.%u.%u via %u.%u.%u.%u with length %u through interface %u\n", dest[0], dest[1], dest[2], dest[3], nexthop[0], nexthop[1],nexthop[2],nexthop[3], entry.len, entry.if_index);
   }
 }
