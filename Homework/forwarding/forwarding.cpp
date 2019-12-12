@@ -10,28 +10,46 @@
  * @param len 即 packet 的长度，单位为字节
  * @return 校验和无误则返回 true ，有误则返回 false
  */
+
+   unsigned int addWhileF(unsigned int a, unsigned int b){
+     int res = a+b;
+     while(res  >= 65536)
+       res = (res & 0xFFFF) + (res >> 16);
+     return res;
+   }
+
+ bool validateIPChecksumF(uint8_t *packet, size_t len) {
+   // TODO:
+   int head_length = (packet[0] % 16)  * 4;
+   unsigned int sum = (packet[10] << 8) + packet[11];
+   unsigned int predict_sum = 0;
+   auto phi = packet[10];
+   auto plo = packet[11];
+   packet[10] = 0;
+   packet[11] = 0;
+   for(int i = 0 ; i < head_length/2 ; i++)
+     predict_sum = addWhileF(predict_sum, (unsigned)(packet[i*2] << 8)+packet[2*i+1]);
+   predict_sum = (~predict_sum) & 0xFFFF;
+   packet[10] = phi;
+   packet[11] = plo;
+   return predict_sum == sum;
+ }
+
 bool forward(uint8_t *packet, size_t len) {
-  uint8_t IHL = packet[0] & 0x0F;
-  int sum = 0;
-
-  for(int i=0; i<(IHL*4); i+=2){
-      sum += (packet[i]<<8);
-      sum += packet[i+1];
+  // TODO:
+  if(validateIPChecksumF(packet, len)){
+    int len_head = (packet[0] % 16) * 4;
+    unsigned int predict_sum = 0;
+    packet[8]--;
+    packet[10] = 0;
+    packet[11] = 0;
+    for(int i =0;i<len_head / 2;i++)
+      predict_sum = addWhileF(predict_sum, (unsigned)(packet[i*2] << 8)+packet[2*i+1]);
+    predict_sum =  (~predict_sum) & 0xFFFF;
+    packet[10] = predict_sum >> 8;
+    packet[11] = predict_sum & 0xFF;
+    return true;
+  }else{
+    return false;
   }
-  while(sum > 0xFFFF){ sum = (sum>>16) + (sum&0xFFFF); }
-  if(sum != 0xFFFF) return false;
-
-  packet[8] -= 1;
-  sum = 0;
-  for(int i=0; i<(IHL*4); i+=2){
-      if(i==10) continue;
-      sum += (packet[i]<<8);
-      sum += packet[i+1];
-  }
-  while(sum > 0xFFFF){ sum = (sum>>16) + (sum&0xFFFF); }
-  sum = (~sum)&0xFFFF;
-  packet[10] = (sum&0xFF00)>>8;
-  packet[11] = sum&0x00FF;
-
-  return true;
 }
