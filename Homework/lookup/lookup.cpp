@@ -1,5 +1,5 @@
-#include "../boilerplate/router.h"
-#include "../boilerplate/rip.h"
+#include "router.h"
+#include "rip.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include<vector>
@@ -28,7 +28,7 @@ vector<RoutingTableEntry> routingTable;
  * @brief 插入/删除一条路由表表项
  * @param insert 如果要插入则为 true ，要删除则为 false
  * @param entry 要插入/删除的表项
- * 
+ *
  * 插入时如果已经存在一条 addr 和 len 都相同的表项，则替换掉原有的。
  * 删除时按照 addr 和 len 匹配。
  */
@@ -62,7 +62,7 @@ bool query(uint32_t addr, uint32_t *nexthop, uint32_t *if_index) {
   *nexthop = 0;
   *if_index = 0;
   uint32_t lenBound = 0;
-  
+
   auto iter = routingTable.cbegin();
   // printf("trying to find addr: %08X\n", addr);
   while(iter != routingTable.cend()){
