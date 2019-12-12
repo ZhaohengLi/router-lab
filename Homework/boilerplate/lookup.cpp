@@ -144,6 +144,6 @@ void printTable(){
       dest[i] = (entry.addr >> (i * 8)) & 0xff;
       nexthop[i] = (entry.nexthop >> (i * 8)) & 0xff;
     }
-    printf("%u.%u.%u.%u via %u.%u.%u.%u with length %u through interface %u\n", dest[0], dest[1], dest[2], dest[3], nexthop[0], nexthop[1],nexthop[2],nexthop[3], entry.len, entry.if_index);
+    printf("%u.%u.%u.%u via %u.%u.%u.%u with length %u through interface %u with metric %\n", dest[0], dest[1], dest[2], dest[3], nexthop[0], nexthop[1],nexthop[2],nexthop[3], entry.len, entry.if_index, entry.metric);
   }
 }
