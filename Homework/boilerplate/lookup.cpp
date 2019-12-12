@@ -93,8 +93,7 @@ void response(RipPacket *resp, uint32_t if_index){
   resp->command = 0x2;
   int entry_num = 0;
   for (uint32_t i = 0; i < routingTable.size(); i++) {
-    if(routingTable[i].if_index == if_index)
-      continue;
+    if(routingTable[i].if_index == if_index) continue; //如果同一个端口 则不加入这条路由表条目
     uint32_t mask =  ((0x1 << routingTable[i].len) - 1);
     uint32_t correct_mask = 0;
     if(routingTable[i].len == 32)

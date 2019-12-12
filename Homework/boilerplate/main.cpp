@@ -31,6 +31,7 @@ int format_packet(in_addr_t src_addr, in_addr_t dst_addr, RipPacket *resp, uint8
   // IP Id, flags, TTL and protocol
   for(int offset = 4;offset < 8; offset++)
     buffer[offset] = 0x00;
+
   buffer[8] = 0x01;
   buffer[9] = 0x11;
   // IP Header Checksum(placeholder)
