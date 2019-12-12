@@ -255,9 +255,9 @@ int main(int argc, char *argv[]) {
               .len = len,
               .if_index = if_index,
               .nexthop = entry.nexthop,
-              .metric = entry.metric
+              .metric = entry.metric+1
             };
-            if(rip.entries[i].metric + 1 > 16){
+            if(rip.entries[i].metric + 1 >= 16){
               // invalid metric, deleting it in routing table and sending it back later
               // maybe not using it now
               // invalid.entries[invalidNum ++] = entry;

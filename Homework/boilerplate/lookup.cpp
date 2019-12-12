@@ -122,7 +122,7 @@ void update(RoutingTableEntry entry) {
     RoutingTableEntry getTable = *iter;
     if(getTable.addr == entry.addr && getTable.len == entry.len){
       update_flag = false;
-      if(entry.if_index == getTable.if_index || entry.metric + 1 <= getTable.metric){
+      if(entry.if_index == getTable.if_index || entry.metric <= getTable.metric){
         routingTable.erase(iter);
         update_flag = true;
       }
