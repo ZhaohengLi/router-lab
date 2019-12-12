@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
   uint64_t last_time = 0;
   while (1) {
     uint64_t time = HAL_GetTicks();
-    if (time > last_time + 30 * 1000) {
+    if (time > last_time + 5 * 1000) {
       // What to do?
       // send complete routing table to every interface
       for(int i=0;i < N_IFACE_ON_BOARD;i++){
@@ -137,9 +137,9 @@ int main(int argc, char *argv[]) {
       }
       printTable();
       // ref. RFC2453 3.8
-      // multicast MAC for 224.0.0.9 is 01:00:5e:00:00:09 
+      // multicast MAC for 224.0.0.9 is 01:00:5e:00:00:09
       // 30秒计时器，发送全部路由表
-      printf("30s Timer\n");
+      printf("5s Timer\n");
       last_time = time;
     }
 
@@ -293,7 +293,7 @@ int main(int argc, char *argv[]) {
       // forward
       // beware of endianness
       uint32_t nexthop, dest_if;
-      
+
       if (query(dst_addr, &nexthop, &dest_if)) {
         printf("Found\n");
         // found
