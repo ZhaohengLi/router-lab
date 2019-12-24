@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
           // RipPacket invalid;
           // invalid.command = 0x2;
 
-          printf("\n*** Get Response Packet From %u.%u.%u.%u ***\n", src_addr[0], src_addr[1], src_addr[2], src_addr[3]);
+          printf("\n*** Get Response Packet From %08x ***\n", src_addr);
           int invalidNum = 0;
           for(int i=0;i<rip.numEntries;i++){
             RipEntry entry = {
@@ -310,7 +310,7 @@ int main(int argc, char *argv[]) {
       // 3b.1 dst is not me
       // forward
       // beware of endianness
-      printf("\n*** Get Forward Packet From %u.%u.%u.%u To %u.%u.%u.%u ***\n", src_addr[0], src_addr[1], src_addr[2], src_addr[3], dst_addr[0], dst_addr[1], dst_addr[2], dst_addr[3]);
+      printf("\n*** Get Forward Packet From %08x To %08x ***\n", src_addr, dst_addr);
       uint32_t nexthop, dest_if;
 
       if (query(dst_addr, &nexthop, &dest_if)) {
