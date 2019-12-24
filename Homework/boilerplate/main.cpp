@@ -15,7 +15,9 @@ extern bool disassemble(const uint8_t *packet, uint32_t len, RipPacket *output);
 extern uint32_t assemble(const RipPacket *rip, uint8_t *buffer);
 extern void update(RoutingTableEntry entry);
 extern void response(RipPacket *resp, uint32_t if_index);
+void response(RipPacket *resp, uint32_t if_index, int table_index)
 extern void printTable();
+extern void getRoutingTableSize();
 
 uint32_t addWhile(uint32_t a, uint32_t b){
   int res = a+b;
@@ -84,6 +86,19 @@ void setSrcAddr(in_addr_t src_addr, uint8_t *buffer){
     buffer[offset] = (src_addr >> ((offset - 12) * 8) )& 0xff;
 }
 
+void broadcast(){
+  for(int i=0; i<N_IFACE_ON_BOARD; i++){
+    for(int j=0; j<getRoutingTableSize(); j+=25){
+      RipPacket resp;
+      macaddr_t dest_mac;
+      response(&resp, i, j);
+      int rip_len = format_packet(addrs[i], multicast_addr, &resp, output);
+      HAL_ArpGetMacAddress(i, multicast_addr, dest_mac);
+      HAL_SendIPPacket(i, output, rip_len + 20 + 8, dest_mac);
+    }
+  }
+}
+
 uint8_t packet[2048];
 uint8_t output[2048];
 // 0: 192.168.3.2
@@ -125,20 +140,8 @@ int main(int argc, char *argv[]) {
   while (1) {
     uint64_t time = HAL_GetTicks();
     if (time > last_time + 5 * 1000) {
-      // What to do?
-      // send complete routing table to every interface
-      for(int i=0;i < N_IFACE_ON_BOARD;i++){
-        RipPacket resp;
-        macaddr_t dest_mac;
-        response(&resp, i);
-        int rip_len = format_packet(addrs[i], multicast_addr, &resp, output);
-        HAL_ArpGetMacAddress(i, multicast_addr, dest_mac);
-        HAL_SendIPPacket(i, output, rip_len + 20 + 8, dest_mac);
-      }
+      broadcast();
       printTable();
-      // ref. RFC2453 3.8
-      // multicast MAC for 224.0.0.9 is 01:00:5e:00:00:09
-      // 30秒计时器，发送全部路由表
       printf("5s Timer\n");
       last_time = time;
     }
@@ -221,18 +224,18 @@ int main(int argc, char *argv[]) {
         // check metric of every entry in RIP request
         bool wrong_metric = false;
         if (rip.command == 1) {
-          if(rip.entries[0].metric != 16)
-            continue;
-          // 3a.3 request, ref. RFC2453 3.9.1
-          // only need to respond to whole table requests in the lab
-          // request
-          RipPacket resp;
-          // TODO: fill resp
-          response(&resp, if_index);
-          // fufilling ID and UDP header, and then assemble it with resp
-          int rip_len = format_packet(addrs[if_index], multicast_addr, &resp, output);
-          // send it back
-          HAL_SendIPPacket(if_index, output, rip_len + 20 + 8, src_mac);
+          // if(rip.entries[0].metric != 16)
+          //   continue;
+          // // 3a.3 request, ref. RFC2453 3.9.1
+          // // only need to respond to whole table requests in the lab
+          // // request
+          // RipPacket resp;
+          // // TODO: fill resp
+          // response(&resp, if_index);
+          // // fufilling ID and UDP header, and then assemble it with resp
+          // int rip_len = format_packet(addrs[if_index], multicast_addr, &resp, output);
+          // // send it back
+          // HAL_SendIPPacket(if_index, output, rip_len + 20 + 8, src_mac);
         } else {
 
           // 3a.2 response, ref. RFC2453 3.9.2

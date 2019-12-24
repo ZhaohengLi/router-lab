@@ -113,6 +113,35 @@ void response(RipPacket *resp, uint32_t if_index){
   resp->numEntries = entry_num;
 }
 
+void response(RipPacket *resp, uint32_t if_index, int table_index){
+  resp->command = 0x2;
+  int entry_num = 0;
+  for (uint32_t i = table_index; i < routingTable.size() && i < i+25; i++) {
+    if(routingTable[i].if_index == if_index) continue; //如果同一个端口 则不加入这条路由表条目
+    uint32_t mask =  ((0x1 << routingTable[i].len) - 1);
+    uint32_t correct_mask = 0;
+    if(routingTable[i].len == 32)
+      correct_mask = 0xffffffff;
+    else{
+      for(int i=0;i<4;i++)
+        correct_mask += ((mask >> (i*8)) & 0xff) << ((3-i) * 8);
+    }
+    RipEntry entry = {
+        .addr = routingTable[i].addr,
+        .mask = mask,
+        .nexthop = routingTable[i].nexthop,
+        .metric = routingTable[i].metric
+    };
+    resp->entries[entry_num++] = entry;
+  }
+  resp->numEntries = entry_num;
+}
+
+
+int getRoutingTableSize(){
+  return routingTable.size();
+}
+
 void update(RoutingTableEntry entry) {
     // TODO:
   auto iter = routingTable.cbegin();
