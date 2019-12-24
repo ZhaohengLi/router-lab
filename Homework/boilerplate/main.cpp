@@ -140,9 +140,19 @@ int main(int argc, char *argv[]) {
   while (1) {
     uint64_t time = HAL_GetTicks();
     if (time > last_time + 5 * 1000) {
-      broadcast();
-      printTable();
       printf("5s Timer\n");
+      //broadcast();
+      for(int i=0; i<N_IFACE_ON_BOARD; i++){
+        for(int j=0; j<getRoutingTableSize(); j+=25){
+          RipPacket resp;
+          macaddr_t dest_mac;
+          response(&resp, i, j);
+          int rip_len = format_packet(addrs[i], multicast_addr, &resp, output);
+          HAL_ArpGetMacAddress(i, multicast_addr, dest_mac);
+          HAL_SendIPPacket(i, output, rip_len + 20 + 8, dest_mac);
+        }
+      }
+      printTable();
       last_time = time;
     }
 
