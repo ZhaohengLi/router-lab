@@ -15,7 +15,7 @@ extern bool disassemble(const uint8_t *packet, uint32_t len, RipPacket *output);
 extern uint32_t assemble(const RipPacket *rip, uint8_t *buffer);
 extern void update(RoutingTableEntry entry);
 extern void response(RipPacket *resp, uint32_t if_index);
-void response(RipPacket *resp, uint32_t if_index, int table_index)
+extern void response(RipPacket *resp, uint32_t if_index, int table_index);
 extern void printTable();
 extern void getRoutingTableSize();
 
