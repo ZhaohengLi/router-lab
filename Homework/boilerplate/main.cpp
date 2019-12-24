@@ -17,7 +17,7 @@ extern void update(RoutingTableEntry entry);
 extern void response(RipPacket *resp, uint32_t if_index);
 extern void response(RipPacket *resp, uint32_t if_index, int table_index);
 extern void printTable();
-extern void getRoutingTableSize();
+extern int getRoutingTableSize();
 
 uint32_t addWhile(uint32_t a, uint32_t b){
   int res = a+b;
