@@ -141,6 +141,7 @@ int main(int argc, char *argv[]) {
     uint64_t time = HAL_GetTicks();
     if (time > last_time + 5 * 1000) {
       printf("\n5s Timer\n");
+      printf("Routing Table Size Is %u", getRoutingTableSize());
       //broadcast();
       for(int i=0; i<N_IFACE_ON_BOARD; i++){
         for(int j=0; j<getRoutingTableSize(); j+=25){
@@ -152,7 +153,7 @@ int main(int argc, char *argv[]) {
           HAL_SendIPPacket(i, output, rip_len + 20 + 8, dest_mac);
         }
       }
-      printTable();
+      //printTable();
       last_time = time;
       printf("\n");
     }
