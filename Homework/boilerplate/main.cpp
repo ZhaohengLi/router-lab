@@ -140,7 +140,7 @@ int main(int argc, char *argv[]) {
   while (1) {
     uint64_t time = HAL_GetTicks();
     if (time > last_time + 5 * 1000) {
-      printf("5s Timer\n");
+      printf("\n5s Timer\n");
       //broadcast();
       for(int i=0; i<N_IFACE_ON_BOARD; i++){
         for(int j=0; j<getRoutingTableSize(); j+=25){
@@ -154,6 +154,7 @@ int main(int argc, char *argv[]) {
       }
       printTable();
       last_time = time;
+      print("\n");
     }
 
     int mask = (1 << N_IFACE_ON_BOARD) - 1;
@@ -253,7 +254,7 @@ int main(int argc, char *argv[]) {
           // RipPacket invalid;
           // invalid.command = 0x2;
 
-          printf("*** Get Response Packet ***\n");
+          printf("\n*** Get Response Packet ***\n");
           int invalidNum = 0;
           for(int i=0;i<rip.numEntries;i++){
             RipEntry entry = {
@@ -309,7 +310,7 @@ int main(int argc, char *argv[]) {
       // 3b.1 dst is not me
       // forward
       // beware of endianness
-      printf("*** Get Forward Packet ***\n");
+      printf("\n*** Get Forward Packet ***\n");
       uint32_t nexthop, dest_if;
 
       if (query(dst_addr, &nexthop, &dest_if)) {
