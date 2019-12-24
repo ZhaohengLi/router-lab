@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
       }
       printTable();
       last_time = time;
-      print("\n");
+      printf("\n");
     }
 
     int mask = (1 << N_IFACE_ON_BOARD) - 1;
