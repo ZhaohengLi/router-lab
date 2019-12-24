@@ -85,19 +85,19 @@ void setSrcAddr(in_addr_t src_addr, uint8_t *buffer){
   for(int offset = 12;offset < 16;offset ++)
     buffer[offset] = (src_addr >> ((offset - 12) * 8) )& 0xff;
 }
-
-void broadcast(){
-  for(int i=0; i<N_IFACE_ON_BOARD; i++){
-    for(int j=0; j<getRoutingTableSize(); j+=25){
-      RipPacket resp;
-      macaddr_t dest_mac;
-      response(&resp, i, j);
-      int rip_len = format_packet(addrs[i], multicast_addr, &resp, output);
-      HAL_ArpGetMacAddress(i, multicast_addr, dest_mac);
-      HAL_SendIPPacket(i, output, rip_len + 20 + 8, dest_mac);
-    }
-  }
-}
+//
+// void broadcast(){
+//   for(int i=0; i<N_IFACE_ON_BOARD; i++){
+//     for(int j=0; j<getRoutingTableSize(); j+=25){
+//       RipPacket resp;
+//       macaddr_t dest_mac;
+//       response(&resp, i, j);
+//       int rip_len = format_packet(addrs[i], multicast_addr, &resp, output);
+//       HAL_ArpGetMacAddress(i, multicast_addr, dest_mac);
+//       HAL_SendIPPacket(i, output, rip_len + 20 + 8, dest_mac);
+//     }
+//   }
+// }
 
 uint8_t packet[2048];
 uint8_t output[2048];
