@@ -252,6 +252,8 @@ int main(int argc, char *argv[]) {
           // assemble invalid RIP packet response, maybe not using it now
           // RipPacket invalid;
           // invalid.command = 0x2;
+
+          printf("*** Get Response Packet ***");
           int invalidNum = 0;
           for(int i=0;i<rip.numEntries;i++){
             RipEntry entry = {
@@ -307,6 +309,7 @@ int main(int argc, char *argv[]) {
       // 3b.1 dst is not me
       // forward
       // beware of endianness
+      printf("*** Get Forward Packet ***");
       uint32_t nexthop, dest_if;
 
       if (query(dst_addr, &nexthop, &dest_if)) {
