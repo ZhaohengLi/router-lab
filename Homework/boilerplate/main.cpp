@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
               .nexthop = entry.nexthop,
               .metric = entry.metric+1
             };
-            printf("mask: %08x, len: %d\n",entry.mask, routingTableEntry.len);
+            //printf("mask: %08x, len: %d\n",entry.mask, routingTableEntry.len);
             if(rip.entries[i].metric + 1 >= 16){
               // invalid metric, deleting it in routing table and sending it back later
               // maybe not using it now
