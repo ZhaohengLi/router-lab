@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
           HAL_SendIPPacket(i, output, rip_len + 20 + 8, dest_mac);
         }
       }
-      //printTable();
+      printTable();
       last_time = time;
       printf("\n");
     }
@@ -261,7 +261,7 @@ int main(int argc, char *argv[]) {
             RipEntry entry = {
                 .addr = rip.entries[i].addr,
                 .mask = rip.entries[i].mask,
-                .nexthop =rip.entries[i].nexthop == 0 ? src_addr : rip.entries[i].nexthop,
+                .nexthop = src_addr,
                 .metric = rip.entries[i].metric
             };
             uint32_t correct_mask = ntohl(entry.mask);
