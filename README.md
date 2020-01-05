@@ -1,6 +1,14 @@
 # Router-Lab
 
-最后更新：2019/12/10 4:20 p.m.
+最后更新：2019/12/27 20:30 p.m.
+
+## 版权声明
+
+本项目为清华大学 2019-2020 年秋季学期计算机系《计算机网络原理》课程实验。
+**未经作者授权，禁止用作任何其他用途，包括且不限于在其他课程或者其他学校中使用。**
+作者保留一切追究侵权责任的权利。
+
+## 简介
 
 <details>
     <summary> 目录 </summary>
@@ -22,6 +30,7 @@
 * [附录：ip 命令的使用](#附录ip-命令的使用)
 * [附录：树莓派系统的配置和使用](#附录树莓派系统的配置和使用)
 * [附录： make 命令的使用和 Makefile 的编写](#附录-make-命令的使用和-makefile-的编写)
+* [附录：出现问题如何调试](#附录出现问题如何调试)
 * [名词解释](#名词解释)
 * [项目作者](#项目作者)
 
@@ -71,7 +80,7 @@ git submodule update --init --recursive
 
 之后如果这个仓库的代码有什么更新，请运行 `git pull` 进行更新。
 
-### 如何使用 HAL 
+### 如何使用 HAL
 
 在 `HAL` 目录中，是完整的 HAL 的源代码。它包括一个头文件 `router_hal.h` 和若干后端的源代码。
 
@@ -116,10 +125,16 @@ HAL 即 Hardware Abstraction Layer 硬件抽象层，顾名思义，是隐藏了
 2. `HAL_GetTicks`：获取从启动到当前时刻的毫秒数
 3. `HAL_ArpGetMacAddress`：从 ARP 表中查询 IPv4 地址对应的 MAC 地址，在找不到的时候会发出 ARP 请求
 4. `HAL_GetInterfaceMacAddress`：获取指定网口上绑定的 MAC 地址
-5. `HAL_ReceiveIPPacket`：从指定的若干个网口中读取一个 IPv4 报文，并得到源 MAC 地址和目的 MAC 地址等信息
+5. `HAL_ReceiveIPPacket`：从指定的若干个网口中读取一个 IPv4 报文，并得到源 MAC 地址和目的 MAC 地址等信息；它还会在内部处理 ARP 表的更新和响应，需要定期调用
 6. `HAL_SendIPPacket`：向指定的网口发送一个 IPv4 报文
 
 这些函数的定义和功能都在 `router_hal.h` 详细地解释了，请阅读函数前的文档。为了易于调试，HAL 没有实现 ARP 表的老化，你可以自己在代码中实现，并不困难。
+
+你可以利用 HAL 本身的调试输出，只需要在运行 `HAL_Init` 的时候设置 `debug` 标志 ，你就可以在 stderr 上看到一些有用的输出。
+
+
+<details>
+    <summary>用 HAL 库编写的例子</summary>
 
 仅通过这些函数，就可以实现一个软路由。我们在 `Example` 目录下提供了一些例子，它们会告诉你 HAL 库的一些基本使用范式：
 
@@ -131,7 +146,7 @@ HAL 即 Hardware Abstraction Layer 硬件抽象层，顾名思义，是隐藏了
 
 这些例子可以用于检验环境配置是否正确，如 Linux 下网卡名字的配置、是否编译成功等等。比如在上面的 Shell 程序中输入 `mac 0` `mac 1` `mac 2` 和 `mac 3`，它会输出对应网口的 MAC 地址，如果输出的数据和你用 `ip l`（macOS 可以用 `ifconfig`） 看到的内容一致，那基本说明你配置没有问题了。
 
-你也可以利用 HAL 本身的调试输出，只需要在运行 `HAL_Init` 的时候设置 `debug` 标志 ，你就可以在 stderr 上看到一些有用的输出。
+</details>
 
 #### 各后端的自定义配置
 
@@ -224,7 +239,7 @@ R3:
 192.168.4.0/24 dev r3r2 scope link
 192.168.5.0/24 dev r3pc2 scope link
 PC2:
-default via 192.168.5.2
+default via 192.168.5.2 dev pc2r3
 192.168.5.0/24 dev pc2r3 scope link
 ```
 
@@ -247,13 +262,22 @@ R3:
 192.168.5.0/24 dev r3pc2 scope link
 ```
 
+实际情况下，树莓派的网卡名字的分配规则是插入时选择最小的位被分配的数字，所以在验收的时候先插的是到 R1 的 USB 网卡，对应 eth1 ，然后再插到 R3 的 USB 网卡，对应 eth2 。
+
+<details>
+    <summary>检查内容和方法</summary>
+
 我们将会逐项检查下列内容：
 
-* PC1 是否与 PC2 能够正常通信：使用 `ping` 测试 ICMP、`curl` 测试 TCP 连接
-* R2 的转发是否通过 HAL 完成，而非 Linux 自带的路由转发功能：使用 `ip a` 命令确认连接 R1 和 R3 的网口上没有配置 IP 地址
-* R1、R3 上的 RIP 转发表是否正确：包括 RIP metric 等信息，从 R1 和 R3 上 运行的 BIRD 输出得到
-* R2 向 R1、R3 发出的 RIP 协议报文是否正确：包括是否进行询问、响应请求，以及是否实现了水平分裂（split horizon）算法，在 R1 和 R3 上用 Wireshark 抓包检查
-* R2 上的 RIP 路由表、转发表是否正确：需要你定期或者每次收到报文时打印最新的 RIP 路由表、系统转发表（见 FAQ 中对于路由表和转发表的讨论），格式自定
+* PC1 是否与 PC2 能够正常通信：使用 `ping` 测试 ICMP、在一个 PC 上运行 `nc -l 80`，另一个 PC 上运行 `nc $pc_addr 80` 并输入内容回车测试 TCP 连接
+* R2 的转发是否通过 HAL 完成，而非 Linux 自带的路由转发功能：在 R2 上使用 `ip a` 命令确认连接 R1 和 R3 的网口上没有配置 IP 地址
+* R1、R3 上的 RIP 路由表是否正确：包括 RIP metric 等信息，从 R1 和 R3 上 运行的 BIRD 输出得到
+* R2 向 R1、R3 发出的 RIP 协议报文是否正确：包括是否响应了请求，以及是否实现了水平分裂（split horizon）算法，在 R1 和 R3 上用 Wireshark 抓包检查
+* R2 上的 RIP 路由表、转发表是否正确：需要你定期或者每次收到报文时打印最新的 RIP 路由表、系统转发表（见 FAQ 中对于路由表和转发表的讨论），格式自定，可以模仿 `ip route` 的输出格式
+
+在 `Setup` 目录下存放了验收时在 R1 和 R3 上配置的脚本，还有恢复它的改动的脚本，注意它采用了树莓派中管理网络的 dhcpcd 进行地址的配置，所以可能不适用于树莓派以外的环境。 如果运行过配置脚本，请在验收前恢复它的改动，运行恢复脚本 `Setup/restore.sh` 即可，也可以手动删除 `/etc/dhcpcd.conf` 最后的几行内容然后用 `sudo systemctl restart dhcpcd` 来重启 dhcpcd 。简单起见，它采用了 netns 来模拟 PC1 和 PC2，这样只需要两个树莓派就可以进行联调和验收。
+
+</details>
 
 <details>
     <summary>为何不在 R2 上配置 IP 地址：192.168.3.2 和 192.168.4.1 </summary>
@@ -264,13 +288,16 @@ R3:
 
 </details>
 
+<details>
+    <summary> 功能实现的要求 </summary>
+
 必须实现的有：
 
 1. 转发功能，支持直连路由和间接路由，包括查表，TTL 减一，Checksum 更新并转到正确的 interface 出去。
 2. 周期性地向所有端口发送 RIP Response （建议在测试和验收时调为 5s），目标地址为 RIP 的组播地址。
 3. 对收到的 RIP Request 有相应的 RIP Response 进行回复，目标地址为 RIP Request 的源地址。
 4. 实现水平分割（split horizon）。
-5. 收到 RIP Response 时，对路由表进行维护。
+5. 收到 RIP Response 时，对路由表进行维护。需要注意的是，BIRD 实现了 reverse poisoning ，你需要注意这种情况。
 6. 定期或者在更新的时候向 stdout/stderr 打印最新的 RIP 路由表。
 
 可选实现的有（不加分，但对调试有帮助）：
@@ -291,7 +318,21 @@ R3:
 2. IGMP 的处理。
 3. interface 状态的跟踪（UP/DOWN 切换）。
 
-此外，我们还将使用 `iperf3` 工具分别测试 PC1 和 PC2 双向进行 TCP 和 UDP 传输的速率。如果你的转发性能较高，可以获得额外的加分。同时，我们可能会进行代码和知识点的抽查。
+</details>
+
+此外，我们还将使用 `iperf3` 工具分别测试 PC1 和 PC2 双向进行 TCP 传输的速率。如果你的转发性能较高，可以获得额外的加分。同时，我们可能会进行代码和知识点的抽查。
+
+<details>
+    <summary> 容易出错的地方 </summary>
+
+1. Metric 计算和更新方式不正确或者不在 [1,16] 的范围内
+2. 没有正确处理 RIP Response 特别是 nexthop=0 的处理和 metric=16 的处理，参考 [RFC 2453 Section 4.4 Next Hop](https://tools.ietf.org/html/rfc2453#section-4.4) 和 [RFC 2453 Section 3.9.2 Response Messages](https://tools.ietf.org/html/rfc2453#page-26)
+3. 转发的时候查表 not found ，还是路由表有问题
+4. 更新路由表的时候，查询应该用精确匹配，但是错误地使用了最长前缀长度匹配
+5. 没有对所有发出的 RIP Response 正确地实现水平分割
+6. 端序不正确，可以通过 Wireshark 看出
+
+</details>
 
 <details>
     <summary> 可供参考的例子 </summary>
@@ -330,9 +371,84 @@ R3:
 
 ### 实验第三部分
 
-第三部分是针对组队的测试，一个组一般是三个人，网络拓扑与单人测试相同，只不过此时 R1、R2、R3 分别是三位同学的树莓派，我们会在验收前几天的某一时刻随机定下每组中哪一位同学分别对应 R1 R2 R3 的哪一个，所以同学们在测试的时候尽量测试各种组合。在这个环节中，只通过 `ping` 检查连通性，PC1 和 PC2 可以正常互通即可。
+第三部分是针对组队的测试，一个组一般是三个人，网络拓扑与单人测试相同，只不过此时 R1、R2、R3 分别是三位同学的树莓派，我们会在验收前几天的某一时刻随机定下每组中哪一位同学分别对应 R1 R2 R3 的哪一个，所以同学们在测试的时候尽量测试各种组合。请注意，在实验中第三部分，在 PC1 R1 R2 R3 PC2 上都不需要运行 BIRD（如果安装了 BIRD 可以运行 `sudo systemctl disable --now bird` 以禁用 BIRD），也不需要打开 Linux 的转发功能。
 
-如果想尝试更加复杂的网络拓扑，同学可以选择在 R1 和 R3 直接再连一条线（组成了环形网络），如果在这种情况下仍然可以实现 PC1 和 PC2 的连通，可以得到一定的加分。
+<details>
+    <summary> 测试和评分标准 </summary>
+
+测试方法（2019.12.26 更新，同学可以选择跳过部分选项，满足部分即可拿到满分，超过满分部分舍去）：
+
+1. 稳定性（15%）：对于下面的测试过程（3-9），如果测试过程中程序没有崩溃，即使没有通过测试，也可以得到每个测试 3% 的分数，15% 封顶
+2. 协议基本实现（10%）：R1 可以学到 192.168.5.0/24 的路由，R3 可以学到 192.168.1.0/24 的路由，通过程序输出判断
+3. 连通性（10%）：从 PC1 可以 ping 通 PC2
+4. 连通延迟（10%）：在连通的基础上，在 PC1 上 ping PC2 的地址， 5s 取延迟的平均值，得到的百分比分值为 10*exp(-t/100) % ，其中 t 单位为 ms
+5. 单连接单工大包（30%）：在 PC2 运行 `iperf3 -s`，在 PC1 运行 `iperf3 -c 192.168.5.1`，默认参数运行，得到的百分比分值为 30*(1-exp(-s/20)) % ，其中 s 单位为 Mbps
+6. 单链接单工小包（30%）：在 PC2 运行 `iperf3 -s`，在 PC1 运行 `iperf3 -c 192.168.5.1 -u -l 16 -t 5 -b 1G`，在 PC2 计算 0.00-5.00 秒总共的 `(Total Datagrams - Lost) / 5s` ，得到的百分比分值为 30*(1-exp(-s)) % ，其中 s 单位为 Kilopackets / s
+7. 小规模路由表压力测试（20%）：在 PC1 上开启 bird，配置 192.168.10.0/24 ~ 192.168.255.0/24 共 246 条新的路由，从 PC2 ping 192.168.10.1 （10%）和 192.168.255.1（10%），可以在 PC1 上抓到包
+8. 中等规模路由表压力测试（30%）：在 PC1 上开启 bird，10.0.0.0/24 ~ 10.8.255.0/24 共 2048 条新路由，从 PC2 ping 10.1.2.3（15%） 和 10.8.7.6（15%），可以在 PC1 上抓到包
+9. 较大规模路由表压力测试（45%）：在 PC1 上开启 bird，配置 AS4538 的所有 IPv4 路由（约 5000 条），从 PC2 ping 166.111.4.100 （15%）、101.6.4.100 （15%）和 59.66.134.1（15%），可以在 PC1 上抓到包
+10. 其他扩展功能：经助教和老师同意可以获得每项不高于 10% 的分数
+
+为了方便理解，你可以打开 `score.xlsx` 并在里面填入你的数据以计算出你能得到的分数。
+
+</details>
+
+PC1 和 PC2 的路由：
+
+```
+PC1:
+192.168.5.0/24 via 192.168.1.1 dev pc1r1
+192.168.1.0/24 dev pc1r1 scope link
+PC2:
+192.168.1.0/24 via 192.168.5.2 dev pc2r3
+192.168.5.0/24 dev pc2r3 scope link
+```
+
+初始情况下 R1 R2 R3 都只有对应的直连路由，只有在正确地运行 RIP 协议后，才能从 PC1 ping 通 PC2 。
+
+验收的时候下，由于 PC1 和 PC2 只连接一个 USB 网卡，所以上面的 pc1r1 和 pc2r3 都是 eth1 。同学自由选择 R2 上两个 USB 网卡的插入顺序，但在 R1 上先插到 R2 的 USB 网卡，即 eth1 ，再插到 PC1 的 USB 网卡，即 eth2，在 R3 也是先插到 R2 的网卡，即 eth1 ，再插到 PC2 的 USB 网卡，即 eth2。这样规定的目的是方便替换 PC1/2 的设备，在验收的时候可以从同学自己的电脑直接换成树莓派。
+
+同学在自己测试时，PC1 和 PC2 可以用自己的笔记本电脑，按照上面要求配置两条路由即可测试。配置静态路由的方法参考：[Windows](https://tekbloq.com/2018/10/24/how-to-add-a-static-route-to-the-windows-routing-table/) [macOS](https://blog.remibergsma.com/2012/03/04/howto-quickly-add-a-route-in-mac-osx/) [Linux](https://www.cyberciti.biz/faq/linux-route-add/) 。一般来说，在配置 IP 地址和子网掩码的时候直连路由自动就添加好了，只需要在 PC1 上添加 192.168.5.0/24 via 192.168.1.1 和在 PC2 上添加 192.168.1.0/24 via 192.168.5.2 即可。具体到 Linux 的命令，就是（假如 USB 网卡是 eth1）：
+
+```
+PC1:
+ip a add 192.168.1.2/24 dev eth1
+ip r add 192.168.5.0/24 via 192.168.1.1 dev eth1
+PC2:
+ip a add 192.168.5.1/24 dev eth1
+ip r add 192.168.1.0/24 via 192.168.5.2 dev eth1
+```
+
+对于路由表的压力测试，可以在 PC1 上使用 `Setup/bird1.conf` 覆盖 `/etc/bird/bird.conf` ，然后用 `sudo systemctl restart bird` 来启动 BIRD，如果你在 netns 中或者非树莓派的环境使用，可能需要修改 `Setup/bird1.conf` 和 `Setup/conf-part{7,8,9}.conf` 相关的网卡名字，并保证网卡处于 UP 状态。这个配置文件中有三个 part，分别对应上面流程中的 7 8 9 三步，可以通过 `sudo birdc disable part7` 和 `sudo birdc enable part7` 来启用/禁用某一组路由表，路由表的具体内容见 `conf-part{7,8,9}.conf` 文件。想要查看 BIRD 是否配置正确，可以运行 `sudo birdc show route` 来查看 BIRD 的完整路由表。
+
+<details>
+    <summary> 温馨提示 </summary>
+
+容易出错的地方：
+
+1. 自己或者队友的水平分割实现的不正确
+2. RIP 中有一些字段不符合要求
+3. USB 网卡的插入顺序不对
+4. 直连路由配置不正确
+5. PC1 和 PC2 配置不正确，ICMP 包根本没有发给 R1 和 R3
+6. Windows 默认不响应 ICMP Echo Request，[解决方法](https://kb.iu.edu/d/aopy)
+7. BIRD 配置不正确，如网卡名称和实际情况对不上
+
+提升转发性能的方法：
+
+1. 去掉转发时的调试输出
+2. 增量更新 Checksum，[参考](https://tools.ietf.org/html/rfc1624)
+3. 优化路由表查询算法
+
+支持较大路由表的方法：
+
+1. 发送 RIP Response 时按照 25 条为一组进行切分
+2. 完善路由表更新算法
+3. 完善路由表查询算法
+
+</details>
+
+如果想尝试更加复杂的网络拓扑，同学可以选择在 R1 和 R3 直接再连一条线（组成了环形网络，配置的 IP 地址自定），如果在这种情况下仍然可以实现 PC1 和 PC2 的连通，可以得到一定的加分，加分方法参考上面测试方法的最后一点。
 
 ## 建议的实验思路
 
@@ -434,16 +550,20 @@ protocol device {
 protocol kernel {
     # 表示 BIRD 会把系统的路由表通过 RIP 发出去，也会把收到的 RIP 信息写入系统路由表
     # 你可以用 `ip route` 命令查看系统的路由表
+    # 退出 BIRD 后从系统中删除路由
     persist no;
+    # 从系统学习路由
     learn;
     ipv4 {
+        # 导出路由到系统，可以用 `ip r` 看到
+        # 也可以用 `export none` 表示不导出，用 birdc show route 查看路由
         export all;
     };
 }
 
 protocol static {
     ipv4 { };
-    route 1.2.3.4/32 via "网口名称"; # 可以手动添加一个静态路由方便调试
+    route 1.2.3.4/32 via "网口名称"; # 可以手动添加一个静态路由方便调试，只有在这个网口存在并且为 UP 时才生效
 }
 
 protocol rip {
@@ -452,7 +572,7 @@ protocol rip {
         export all;
     };
     debug all;
-    interface "网口名称" {
+    interface "网口名称" { # 网口名称必须存在，否则 BIRD 会直接退出
         version 2;
         update time 5; # 5秒一次更新，方便调试
     };
@@ -464,31 +584,38 @@ protocol rip {
 <details>
     <summary> BIRD v1.6 配置 </summary>
 
-如果你用的是 v1.6 版本，有一些字段需要修改：
-
 ```
+# log "bird.log" all; # 可以将 log 输出到文件中
+# debug protocols all; # 如果要更详细的信息，可以打开这个
+
 router id 网口IP地址; # 随便写一个，保证唯一性即可
 
 protocol device {
 }
 
 protocol kernel {
-    learn;
+    # 表示 BIRD 会把系统的路由表通过 RIP 发出去，也会把收到的 RIP 信息写入系统路由表
+    # 你可以用 `ip route` 命令查看系统的路由表
+    # 退出 BIRD 后从系统中删除路由
     persist off;
+    # 从系统学习路由
+    learn;
+    # 导出路由到系统，可以用 `ip r` 看到
+    # 也可以用 `export none` 表示不导出，用 birdc show route 查看路由
     export all;
 }
 
 protocol static {
-    route 1.2.3.4/32 via "网口名称";
+    route 1.2.3.4/32 via "网口名称"; # 可以手动添加一个静态路由方便调试，只有在这个网口存在并且为 UP 时才生效
 }
 
 protocol rip {
     import all;
     export all;
     debug all;
-    interface "网口名称" {
+    interface "网口名称" { # 网口名称必须存在，否则 BIRD 会直接退出
         version 2;
-        update time 5;
+        update time 5; # 5秒一次更新，方便调试
     };
 }
 ```
@@ -500,6 +627,12 @@ protocol rip {
 启动服务（如 `systemctl start bird`）后，你就可以开始抓包，同时查看 bird 打出的信息（`journalctl -f -u bird`），这对调试你的路由器实现很有帮助。
 
 你也可以直接运行 BIRD（`bird -c /etc/bird.conf`），可在命令选项中加上 `-d` 把程序放到前台，方便直接退出进程。若想同时开多个 BIRD，则需要给每个进程指定单独的 PID 文件和 socket，如 `bird -d -c bird1.conf -P bird1.pid -s bird1.socket` 。
+
+在安装 BIRD（`sudo apt install bird`）之后，它默认是已经启动并且开机自启动。如果要启动 BIRD，运行 `sudo systemctl start bird`；停止 BIRD： `sudo systemctl stop bird`；重启 BIRD：`sudo systemctl restart bird`；打开开机自启动：`sudo systemctl enable bird`；关闭开机自启动：`sudo systemctl disable bird`。
+
+配合 BIRD 使用的还有它的客户端程序 `birdc`，它可以连接到 BIRD 服务并且控制它的行为。默认情况下 birdc 会连接系统服务（systemctl 启动）的 BIRD，如果启动 BIRD 时采用了 `-s` 参数，那么 birdc 也要指定同样的 socket 路径。
+
+对于一条静态路由（如 `route 1.2.3.0/24 via "abcd"`），它只有在 `abcd` 处于 UP 状态时才会生效，如果你只是想让 BIRD 向外宣告这一条路由，可以用 `lo` （本地环回）代替 `abcd` 并且运行 `ip l set lo up`。你可以用 `birdc show route` 来确认这件事情。
 
 ### 如何在一台计算机上进行真实测试
 
@@ -601,7 +734,11 @@ Q: 为啥要用树莓派呢，电脑上装一个 Linux 双系统或者开个 Lin
 
 A: 树莓派可以提供一个统一的环境，而且对同学的电脑的系统和硬盘空间没有什么要求，而虚拟机和双系统都需要不少的硬盘空间。另外，虚拟机的网络配置比树莓派要更加麻烦，一些同学的电脑也会因为没有开启虚拟化或者 Hyper-V 的原因运行不了 VirtualBox 和 VMWare，三种主流的虚拟机软件都有一些不同，让配置变得很麻烦。同时，树莓派的成熟度和文档都比较好，网上有很多完善的资料，学习起来并不困难，硬件成本也不高。
 
-## 附录：`ip` 命令的使用 
+Q: 我在 WSL 下编译 boilerplate，发现编译不通过，`checksum.cpp` 等几个 cpp 文件都不是合法的 cpp 代码。
+
+A: 这是因为在 Windows 里 git clone 的符号链接在 WSL 内看到的是普通文件，建议在 WSL 中进行 git clone 的操作，这样符号链接才是正确的。
+
+## 附录：`ip` 命令的使用
 
 在本文中几次提到了 `ip` 命令的使用，它的全名为 iproute2，是当前管理 Linux 操作系统网络最常用的命令之一。需要注意的是，涉及到更改的命令都需要 root 权限，所以需要在命令前加一个 `sudo ` （注意空格）表示用 root 权限运行。
 
@@ -872,40 +1009,66 @@ Make 通过 `%.o` 的格式来支持 wildcard，如 `%.o: %.cpp` 就可以针对
 
 以上就涵盖了本实验中 Makefile 用到的所有语法。使用的时候只需要 `make` 就可以了。
 
+## 附录：出现问题如何调试
+
+对于实验的第二阶段，验收测试里第一项就是 ICMP 的连通性测试，一个 ICMP Echo Request 经过 PC1 - R1 - R2 - R3 - PC2 ，再一个对应的 ICMP Echo Reply 经过 PC2 - R3 - R2 - R1 - PC1，这么多步骤错了一个都会导致不能连通，下面介绍一个调试的思路：
+
+1. 在 PC1 上一直开着 ping 到 PC2
+2. 从 PC1 开始，一跳一跳地抓包，即 pc1r1，r1r2，r2r3，r3pc2 依次抓包，找到第一次没有出现 Echo Request 的地方，比如 pc1r1 和 r1r2 可以抓到，而 r2r3 抓不到，那说明问题可能在 r2；如果一直到 PC2 都能抓到 Echo Request，就反过来抓 Echo Reply，一样可以定位到出问题的点。
+3. 找到可能出问题的点后，首先检查进入这个点的包的格式对不对，比如 IP 头的 checksum 和 length 是否正确（打开 Wireshark 的 IP Header Checksum 检查）
+4. 如果进入的包格式是错的，那出问题的点是这个点的前一个，一般来说前一个就是 R2，这种情况一般是转发的时候 Checksum 更新有问题；如果前一个不是 R2，并且你采用了 netns ，请在上面的 FAQ 找到相应的问题
+5. 如果进入的包格式是对的，如果这个点是：
+   1. R2：检查你的路由表和路由表的查询结果
+   2. 其他：用 `ip r` 命令看有没有 ICMP 目的地址应该匹配上的正确路由，如果没有那就是 RIP 协议还有问题
+      1. 如果怀疑 RIP 协议有问题，那就在 r1r2 和 r2r3 上抓包，着重注意源地址是 192.168.3.2 和 192.168.4.1 （即 R2 发出的）的 RIP Response 包，检查以下几点：
+         1. IP 头和 UDP 头的长度和下面的 RIP Entry 数量要匹配
+         2. IP Header Checksum 和 UDP Checksum
+         3. RIP 的 Version 为 2
+         4. RIP Entry 数量需要在 [1,25] 的范围内
+         5. 对于每条 RIP Entry：
+            1. Address Family = 2
+            2. Route Tag = 0
+            3. Mask 的二进制要么全是 1，要么全是 0，要么是连续的 1 接着连续的 0
+            4. IP Address & ~Mask == 0
+            5. Nexthop 要么为 0 ，要么和 IP 源地址在同一个网段
+            6. Metric 在 [1,16] 的范围内
+
 ## 名词解释
 
-- router：路由器，它主要的工作是在网络层上进行 IP 协议的转发。
-- lab：实验，可以理解为需要实践的作业。
-- git：一个版本控制系统
-- make：一个编译构建系统
-- python3：一个编程语言
-- windows：微软公司的操作系统
-- linux：由 Linus Torvalds 最初编写并主导开发的操作系统内核
-- debian：一个操作系统及自由软件的发行版
-- ubuntu：基于 debian 的以桌面应用为主的发行版
-- raspbian：基于 debian 的针对树莓派的发行版
 - apt：debian 发行版的包管理器
-- pip：python 语言的包管理器
-- pcap：1. 是一种格式，存储了网络数据 2. 是一个库/工具，提供了从真实网卡上抓取网络数据包的途径
-- wireshark：一个用户友好的抓包工具，可以对抓到的数据进行深入的解析
-- tshark：Wireshark 的 CLI 版本，可以直接在命令行环境下运行
-- iproute2: Linux 系统下一个网络管理工具
-- g++：GCC 的一部分，是一个 C++ 语言的编译器
-- pyshark：在 Python 中使用 tshark 的一个库
-- HAL：硬件抽象层，表示对一类硬件或者平台进行抽象得到的统一的接口
-- submodule：git 在一个仓库中包括另一个仓库的一种方法
-- macOS：苹果公司的操作系统，前身是 Mac OS X
-- xilinx：赛灵思公司，计算机组成原理课程使用的 FPGA 来自这个公司
+- brd：broadcast 的缩写
 - cmake：一个编译构建系统，可以生成 make、vs 等可以构建的项目文件
-- interface：Linux 下的一个网口，可以是真实的，也可以是虚拟的
-- tick：时钟滴答的一下响声
-- link：一条链路，比如一条网线连接两台设备
+- debian：一个操作系统及自由软件的发行版
 - dev：device 的缩写，表示设备
-- systemctl：systemd 的一个管理程序，可以控制服务的启动和停止
+- git：一个版本控制系统
+- g++：GCC 的一部分，是一个 C++ 语言的编译器
+- HAL：硬件抽象层，表示对一类硬件或者平台进行抽象得到的统一的接口
+- iface：interface 的缩写
+- interface：Linux 下的一个网口，可以是真实的，也可以是虚拟的
+- iproute2: Linux 系统下一个网络管理工具
 - journalctl：systemd 的查看服务日志的工具
-- tcpdump：一个命令行的抓报工具
+- lab：实验，可以理解为需要实践的作业。
+- link：一条链路，比如一条网线连接两台设备
+- linux：由 Linus Torvalds 最初编写并主导开发的操作系统内核
+- macOS：苹果公司的操作系统，前身是 Mac OS X
+- make：一个编译构建系统
+- pcap：1. 是一种格式，存储了网络数据 2. 是一个库/工具，提供了从真实网卡上抓取网络数据包的途径
+- pip：python 语言的包管理器
+- pyshark：在 Python 中使用 tshark 的一个库
+- python3：一个编程语言
 - raw socket：Linux 提供的一套接口，可以抓取满足特定条件的数据包
+- raspbian：基于 debian 的针对树莓派的发行版
+- router：路由器，它主要的工作是在网络层上进行 IP 协议的转发。
+- submodule：git 在一个仓库中包括另一个仓库的一种方法
 - sudo：以 root 权限运行某个程序
+- systemctl：systemd 的一个管理程序，可以控制服务的启动和停止
+- tcpdump：一个命令行的抓报工具
+- tick：时钟滴答的一下响声
+- tshark：Wireshark 的 CLI 版本，可以直接在命令行环境下运行
+- ubuntu：基于 debian 的以桌面应用为主的发行版
+- windows：微软公司的操作系统
+- wireshark：一个用户友好的抓包工具，可以对抓到的数据进行深入的解析
+- xilinx：赛灵思公司，计算机组成原理课程使用的 FPGA 来自这个公司
 
 ## 项目作者
 
