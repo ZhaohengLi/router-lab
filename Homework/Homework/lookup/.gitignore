@@ -1,6 +1,0 @@
-*.o
-lookup
-std
-std.cpp
-!*_output*.out
-!Makefile
